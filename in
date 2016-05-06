@@ -1,0 +1,36 @@
+#! /bin/bash -eu
+set -o pipefail
+
+DESTINATION_DIR="$1"
+INPUT="$(cat)"
+
+getParameter() {
+  echo "$INPUT" | jq --raw-output $1
+}
+
+# from source
+REPOSITORY="$(getParameter .source.repository)"
+GROUP="$(getParameter .source.group)"
+ARTIFACT="$(getParameter .source.artifact)"
+CLASSIFIER="$(getParameter .source.classifier)"
+PACKAGING="$(getParameter .source.packaging)"
+
+# from version
+VERSION="$(getParameter .version.version)"
+
+CLASSIFIER_SUFFIX=
+if [[ "$CLASSIFIER" != null ]]
+then
+  CLASSIFIER_SUFFIX="-$CLASSIFIER"
+fi
+
+if [[ "$PACKAGING" == null ]]
+then
+  PACKAGING="jar"
+fi
+
+ARTIFACT_FILE_NAME="${ARTIFACT}-${VERSION}${CLASSIFIER_SUFFIX}.${PACKAGING}"
+ARTIFACT_URL="${REPOSITORY}/${GROUP//.//}/${ARTIFACT}/${VERSION}/${ARTIFACT_FILE_NAME}"
+curl --fail --output "$DESTINATION_DIR/$ARTIFACT_FILE_NAME" "$ARTIFACT_URL"
+
+echo "{\"version\": {\"version\": \"$VERSION\"}}"

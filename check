@@ -1,0 +1,32 @@
+#! /bin/bash -eu
+set -o pipefail
+
+INPUT="$(cat)"
+
+getParameter() {
+  echo "$INPUT" | jq --raw-output $1
+}
+
+# from source
+REPOSITORY="$(getParameter .source.repository)"
+GROUP="$(getParameter .source.group)"
+ARTIFACT="$(getParameter .source.artifact)"
+# TODO: should have include and exclude filters
+
+# from version
+VERSION="$(getParameter .version.version)"
+
+METADATA_URL="${REPOSITORY}/${GROUP//.//}/${ARTIFACT}/maven-metadata.xml"
+
+if [[ "$VERSION" != null ]]
+then
+  VERSION_RANGE_SELECTOR="/^$VERSION\$/,$"
+else
+  VERSION_RANGE_SELECTOR="$"
+fi
+
+curl --fail "$METADATA_URL" \
+  | xmlstarlet sel --template --value-of /metadata/versioning/versions/version \
+  | sed -n "${VERSION_RANGE_SELECTOR}p" \
+  | sed 's/.*/{ "version": "&" }/' \
+  | jq --slurp .

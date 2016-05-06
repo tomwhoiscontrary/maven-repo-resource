@@ -1,0 +1,34 @@
+---
+resource_types:
+  - name: maven
+    type: docker-image
+    source:
+      repository: twic/maven-repo-resource
+      tag: "1"
+
+resources:
+  - name: hackday-test-jar
+    type: maven
+    source:
+      group: hackday.test
+      artifact: hello
+      repository: http://10.60.2.98:8081/artifactory/ext-release-local
+
+jobs:
+  - name: run-jar
+    plan:
+      - get: hackday-test-jar
+        trigger: true
+      - task: run
+        config:
+          platform: linux
+          image_resource:
+            type: docker-image
+            source:
+              repository: java
+              tag: openjdk-8u77-jre-alpine
+          inputs:
+            - name: hackday-test-jar
+          run:
+            path: /bin/sh
+            args: ['-c', 'java -jar hackday-test-jar/*.jar']
